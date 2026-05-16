@@ -1,0 +1,1427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deadlock Splash Configurator</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: #0e0a0f;
+    color: #e7e3e0;
+    font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    overflow: hidden;
+  }
+
+  #app { display: flex; flex-direction: column; height: 100vh; }
+
+  #topbar {
+    background: #1a1418;
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid #3a2d3c;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  #topbar h5 { margin: 0; color: #fdf1d5; font-family: Courier, monospace; letter-spacing: 1px; }
+  #topbar .spacer { flex: 1; }
+  #topbar .group { display: flex; align-items: center; gap: 0.4rem; }
+
+  #controls-panel {
+    flex: 1 1 0;
+    overflow-y: auto;
+    padding: 1rem;
+    background: #15101a;
+    min-height: 120px;
+  }
+
+  #resizer {
+    flex: 0 0 6px;
+    background: #3a2d3c;
+    cursor: ns-resize;
+    border-top: 1px solid #251c2b;
+    border-bottom: 1px solid #251c2b;
+  }
+  #resizer:hover { background: #d91d65; }
+
+  #preview-panel {
+    flex: 0 0 45vh;
+    background: #1a1418;
+    overflow: hidden;
+    position: relative;
+  }
+
+  #preview-wrap {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    position: relative;
+  }
+
+  #preview {
+    width: 1280px;
+    transform-origin: top left;
+    position: absolute;
+    top: 0; left: 0;
+  }
+
+  .control-section {
+    background: #1a1322;
+    border: 1px solid #3a2d3c;
+    border-radius: 6px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
+  .control-section h6 {
+    color: #fdf1d5;
+    font-family: Courier, monospace;
+    border-bottom: 1px solid #3a2d3c;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+    letter-spacing: 1px;
+  }
+
+  .form-control {
+    background: #251c2b;
+    color: #e7e3e0;
+    border: 1px solid #3a2d3c;
+  }
+  .form-control:focus {
+    background: #251c2b;
+    color: #e7e3e0;
+    border-color: #d91d65;
+    box-shadow: 0 0 0 0.2rem rgba(217, 29, 101, 0.25);
+  }
+  textarea.form-control { resize: vertical; }
+  label { color: #c9c8cc; margin-bottom: 0.25rem; font-size: 0.85rem; }
+  small { color: #8d8290; }
+
+  .color-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.4rem;
+  }
+  .color-row label { flex: 1; margin: 0; }
+
+  input[type=color] {
+    width: 50px;
+    height: 32px;
+    padding: 2px;
+    border: 1px solid #3a2d3c;
+    background: #251c2b;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  .btn-deadlock {
+    background: #d91d65;
+    color: #fff;
+    border: none;
+  }
+  .btn-deadlock:hover { background: #b71856; color: #fff; }
+  .btn-deadlock:disabled { background: #6a1331; cursor: wait; }
+
+  .btn-secondary-deadlock {
+    background: #3a2d3c;
+    color: #fdf1d5;
+    border: 1px solid #715d7d;
+  }
+  .btn-secondary-deadlock:hover { background: #4a3a4f; color: #fdf1d5; }
+
+  /* Icon picker modal */
+  #icon-picker-modal {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.75);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+  #icon-picker-modal.open { display: flex; }
+  #icon-picker-content {
+    background: #1a1322;
+    border: 1px solid #3a2d3c;
+    border-radius: 6px;
+    width: 640px;
+    max-width: 92vw;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+  }
+  #icon-picker-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 6px;
+    overflow-y: auto;
+    flex: 1;
+    padding: 6px;
+    border: 1px solid #3a2d3c;
+    border-radius: 4px;
+    background: #15101a;
+  }
+  .icon-grid-item {
+    background: #251c2b;
+    border: 1px solid #3a2d3c;
+    border-radius: 4px;
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 1.4rem;
+    color: #e7e3e0;
+    transition: all 0.15s;
+  }
+  .icon-grid-item:hover { border-color: #d91d65; background: #3a2236; color: #fdf1d5; }
+
+  .ability-row {
+    display: flex;
+    gap: 0.6rem;
+    align-items: flex-start;
+    margin-bottom: 0.6rem;
+    padding: 0.6rem;
+    background: #251c2b;
+    border-radius: 4px;
+  }
+  .ability-icon-btn {
+    width: 60px;
+    height: 60px;
+    flex-shrink: 0;
+    background: #1a1322;
+    border: 1px solid #3a2d3c;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 1.5rem;
+    color: #d91d65;
+    transition: all 0.15s;
+  }
+  .ability-icon-btn:hover { border-color: #d91d65; background: #3a2236; }
+  .ability-fields { flex: 1; display: flex; flex-direction: column; gap: 0.4rem; }
+
+  .image-input-group {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  .image-input-group input[type=text] { flex: 1; }
+  .file-btn {
+    padding: 0.375rem 0.75rem;
+    background: #3a2d3c;
+    border: 1px solid #715d7d;
+    color: #fdf1d5;
+    border-radius: 4px;
+    cursor: pointer;
+    white-space: nowrap;
+    font-size: 0.85rem;
+    margin: 0;
+  }
+  .file-btn:hover { background: #4a3a4f; }
+
+  .img-preview {
+    width: 100%;
+    height: 70px;
+    background-color: #15101a;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    border: 1px solid #3a2d3c;
+    border-radius: 4px;
+    margin-top: 0.4rem;
+  }
+
+  /* Preview template overrides */
+  #preview .container {
+    position: relative;
+    overflow: hidden;
+    max-width: 1280px !important;
+    width: 100% !important;
+  }
+  #preview p { margin-top: 0; margin-bottom: 1rem; }
+  #preview .container p:last-of-type { margin-bottom: 0; }
+  #preview .container .col-12 > .card-body { padding: 0; }
+  #preview .splash {
+    padding: 2rem 0;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: #212529;
+    font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div id="topbar">
+    <h5>DEADLOCK SPLASH CONFIGURATOR</h5>
+    <div class="spacer"></div>
+    <div class="group">
+      <button class="btn btn-sm btn-secondary-deadlock" id="btn-load" title="Load config from JSON">
+        <i class="fas fa-file-import"></i> Load
+      </button>
+      <input type="file" id="file-load" accept=".json,application/json" hidden>
+      <button class="btn btn-sm btn-secondary-deadlock" id="btn-save" title="Save current config as JSON">
+        <i class="fas fa-file-export"></i> Save Config
+      </button>
+      <button class="btn btn-sm btn-secondary-deadlock" id="btn-reset" title="Reset to defaults">
+        <i class="fas fa-undo"></i> Reset
+      </button>
+    </div>
+    <div class="group" style="margin-left: 0.5rem;">
+      <label for="export-width" style="margin: 0;">Width:</label>
+      <input type="number" id="export-width" class="form-control form-control-sm" value="1920" min="320" max="7680" style="width: 90px;">
+      <span id="export-height-info" style="color: #c9c8cc; font-size: 0.85rem; min-width: 110px;"></span>
+      <button class="btn btn-sm btn-deadlock" id="btn-image" title="Render and download PNG">
+        <i class="fas fa-download"></i> Save Image
+      </button>
+    </div>
+  </div>
+
+  <div id="controls-panel">
+
+    <div class="control-section">
+      <h6>TEXT CONTENT</h6>
+      <div class="form-group">
+        <label>Character Name (info-card heading)</label>
+        <input type="text" class="form-control" data-bind="name">
+      </div>
+      <div class="form-group">
+        <label>Personality Traits (3)</label>
+        <div class="row no-gutters" style="gap: 0.4rem;">
+          <input type="text" class="form-control col" data-bind-array="personalityTraits" data-index="0">
+          <input type="text" class="form-control col" data-bind-array="personalityTraits" data-index="1">
+          <input type="text" class="form-control col" data-bind-array="personalityTraits" data-index="2">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Summary <small>(blank line = new paragraph, **wrap** = highlight)</small></label>
+        <textarea class="form-control" rows="4" data-bind="summary"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Name Art (large splash heading)</label>
+        <input type="text" class="form-control" data-bind="nameArt">
+      </div>
+      <div class="form-group">
+        <label>Splash Tags (Role / Playstyle / Trait)</label>
+        <div class="row no-gutters" style="gap: 0.4rem;">
+          <input type="text" class="form-control col" data-bind-array="splashTraits" data-index="0">
+          <input type="text" class="form-control col" data-bind-array="splashTraits" data-index="1">
+          <input type="text" class="form-control col" data-bind-array="splashTraits" data-index="2">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Quote</label>
+        <input type="text" class="form-control" data-bind="quote">
+      </div>
+    </div>
+
+    <div class="control-section">
+      <h6>STATS</h6>
+      <div id="stats-list"></div>
+    </div>
+
+    <div class="control-section">
+      <h6>ABILITIES <small>(click icon to change; **wrap** highlights inside description)</small></h6>
+      <div id="abilities-list"></div>
+    </div>
+
+    <div class="control-section">
+      <h6>IMAGES</h6>
+      <div class="row">
+        <div class="col-md-4 form-group">
+          <label>Background</label>
+          <div class="image-input-group">
+            <input type="text" class="form-control form-control-sm" data-bind="backgroundImage" placeholder="URL or data:...">
+            <label class="file-btn">Upload<input type="file" hidden accept="image/*" data-file-bind="backgroundImage"></label>
+          </div>
+          <div class="img-preview" data-img-preview="backgroundImage"></div>
+        </div>
+        <div class="col-md-4 form-group">
+          <label>Silhouette <small>(filtered)</small></label>
+          <div class="image-input-group">
+            <input type="text" class="form-control form-control-sm" data-bind="silhouetteImage" placeholder="URL or data:...">
+            <label class="file-btn">Upload<input type="file" hidden accept="image/*" data-file-bind="silhouetteImage"></label>
+          </div>
+          <div class="img-preview" data-img-preview="silhouetteImage"></div>
+        </div>
+        <div class="col-md-4 form-group">
+          <label>Character</label>
+          <div class="image-input-group">
+            <input type="text" class="form-control form-control-sm" data-bind="characterImage" placeholder="URL or data:...">
+            <label class="file-btn">Upload<input type="file" hidden accept="image/*" data-file-bind="characterImage"></label>
+          </div>
+          <div class="img-preview" data-img-preview="characterImage"></div>
+        </div>
+      </div>
+      <small>Tip: external URLs may fail to render on Save Image due to CORS. Upload the file directly for guaranteed export.</small>
+    </div>
+
+    <div class="control-section">
+      <h6>SILHOUETTE FILTERS</h6>
+      <div class="row">
+        <div class="col-md-3 form-group">
+          <label>Sepia: <span data-display="filterSepia"></span></label>
+          <input type="range" class="form-control-range" min="0" max="1" step="0.01" data-bind-num="filterSepia">
+        </div>
+        <div class="col-md-3 form-group">
+          <label>Hue Rotate: <span data-display="filterHueRotate"></span>°</label>
+          <input type="range" class="form-control-range" min="0" max="360" step="1" data-bind-num="filterHueRotate">
+        </div>
+        <div class="col-md-3 form-group">
+          <label>Brightness: <span data-display="filterBrightness"></span>%</label>
+          <input type="range" class="form-control-range" min="0" max="200" step="1" data-bind-num="filterBrightness">
+        </div>
+        <div class="col-md-3 form-group">
+          <label>Saturate: <span data-display="filterSaturate"></span>%</label>
+          <input type="range" class="form-control-range" min="0" max="2000" step="10" data-bind-num="filterSaturate">
+        </div>
+      </div>
+    </div>
+
+    <div class="control-section">
+      <h6>COLORS</h6>
+      <div class="row">
+        <div class="col-md-6">
+          <div class="color-row"><label>Accent</label><input type="color" data-bind-color="accentColor"></div>
+          <div class="color-row"><label>Header Text / Highlight</label><input type="color" data-bind-color="headerColor"></div>
+          <div class="color-row"><label>Body Text</label><input type="color" data-bind-color="bodyTextColor"></div>
+          <div class="color-row"><label>Icon &amp; Label Text</label><input type="color" data-bind-color="iconLabelColor"></div>
+          <div class="color-row"><label>Page Background</label><input type="color" data-bind-color="containerBg"></div>
+        </div>
+        <div class="col-md-6">
+          <div class="color-row"><label>Card BG Start</label><input type="color" data-bind-color="cardBgStart"></div>
+          <div class="color-row"><label>Card BG Middle</label><input type="color" data-bind-color="cardBgMid"></div>
+          <div class="color-row"><label>Card BG End</label><input type="color" data-bind-color="cardBgEnd"></div>
+          <div class="color-row"><label>Card Border</label><input type="color" data-bind-color="cardBorderColor"></div>
+          <div class="color-row"><label>Card Header BG</label><input type="color" data-bind-color="cardHeaderBg"></div>
+          <div class="color-row"><label>Backing Panel</label><input type="color" data-bind-color="backingPanelColor"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="control-section">
+      <h6>FONTS</h6>
+      <div class="row">
+        <div class="col-md-4 form-group">
+          <label>Header Font</label>
+          <select class="form-control font-select" data-font-bind="headerFont"></select>
+        </div>
+        <div class="col-md-4 form-group">
+          <label>Body Font</label>
+          <select class="form-control font-select" data-font-bind="bodyFont"></select>
+        </div>
+        <div class="col-md-4 form-group">
+          <label>Name Art Font</label>
+          <select class="form-control font-select" data-font-bind="nameArtFont"></select>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:0.5rem; margin-top:0.25rem;">
+        <button class="btn btn-sm btn-secondary-deadlock" id="btn-add-font">
+          <i class="fas fa-plus"></i> Add Google Font…
+        </button>
+        <small style="margin:0;">
+          Don't see your font? Go to <strong>fonts.google.com</strong>, find a font, and copy its <em>exact</em> family name (e.g., "Press Start 2P", "Bebas Neue"). Paste it into the Add dialog and it loads automatically.
+        </small>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="resizer" title="Drag to resize preview"></div>
+
+  <div id="preview-panel">
+    <div id="preview-wrap">
+      <div id="preview"></div>
+    </div>
+  </div>
+</div>
+
+<div id="icon-picker-modal">
+  <div id="icon-picker-content">
+    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem;">
+      <h6 style="color:#fdf1d5; margin:0; flex:1; font-family:Courier; letter-spacing:1px;">PICK AN ICON</h6>
+      <input type="text" id="icon-search" class="form-control form-control-sm" placeholder="search..." style="width:200px;">
+      <button class="btn btn-sm btn-secondary-deadlock" id="icon-picker-close">Close</button>
+    </div>
+    <div style="margin-bottom:0.6rem; display:flex; gap:0.5rem; align-items:center;">
+      <label style="margin:0; white-space: nowrap;">Custom name:</label>
+      <input type="text" id="icon-custom" class="form-control form-control-sm" placeholder='e.g. "skull-crossbones" (without "fa-")' style="flex:1;">
+      <button class="btn btn-sm btn-deadlock" id="icon-custom-use">Use</button>
+    </div>
+    <div id="icon-picker-grid"></div>
+  </div>
+</div>
+
+<script>
+// ----- FONT LIBRARY -----
+const FONT_LIBRARY = {
+  'Web-safe': [
+    'Arial', 'Arial Black', 'Comic Sans MS', 'Courier', 'Courier New',
+    'Garamond', 'Georgia', 'Helvetica', 'Impact', 'Lucida Console',
+    'Lucida Sans Unicode', 'Palatino', 'Tahoma', 'Times New Roman',
+    'Trebuchet MS', 'Verdana'
+  ],
+  'Generic': ['sans-serif', 'serif', 'monospace', 'cursive', 'fantasy'],
+  'Google — Display / Heading': [
+    'Bebas Neue', 'Anton', 'Oswald', 'Russo One', 'Black Ops One',
+    'Orbitron', 'Audiowide', 'Bungee', 'Bungee Inline', 'Bungee Shade',
+    'Faster One', 'Megrim', 'Iceberg', 'Iceland', 'Bowlby One',
+    'Squada One', 'Staatliches', 'Teko', 'Big Shoulders Display',
+    'Saira Stencil One', 'Stardos Stencil', 'Allerta Stencil', 'Wallpoet',
+    'Black Han Sans', 'Chakra Petch', 'Rajdhani', 'Syncopate', 'Monoton'
+  ],
+  'Google — Themed / Decorative': [
+    'Cinzel', 'Cinzel Decorative', 'Special Elite', 'Permanent Marker',
+    'Bangers', 'Creepster', 'Eater', 'Frijole', 'Metal Mania', 'Nosifer',
+    'Vampiro One', 'Pirata One', 'Almendra', 'Almendra Display',
+    'UnifrakturCook', 'UnifrakturMaguntia', 'MedievalSharp', 'Macondo',
+    'Macondo Swash Caps', 'Sancreek', 'Caesar Dressing', 'Trade Winds',
+    'Ewert', 'Pinyon Script', 'Sacramento', 'Great Vibes', 'Tangerine'
+  ],
+  'Google — Pixel / Retro / Mono': [
+    'Press Start 2P', 'VT323', 'Share Tech Mono', 'Major Mono Display',
+    'Rubik Mono One', 'Silkscreen', 'Pixelify Sans', 'Workbench',
+    'Source Code Pro', 'Fira Code', 'JetBrains Mono', 'IBM Plex Mono',
+    'Space Mono', 'Cutive Mono', 'Roboto Mono'
+  ],
+  'Google — Body / Clean': [
+    'Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Raleway',
+    'Playfair Display', 'Inconsolata', 'IBM Plex Sans', 'IBM Plex Serif',
+    'Rubik', 'Poppins', 'Inter', 'Manrope', 'Nunito', 'Karla',
+    'Work Sans', 'Quicksand', 'Mulish'
+  ]
+};
+
+const GOOGLE_FONTS_SET = new Set();
+['Google — Display / Heading', 'Google — Themed / Decorative',
+ 'Google — Pixel / Retro / Mono', 'Google — Body / Clean']
+  .forEach(g => FONT_LIBRARY[g].forEach(n => GOOGLE_FONTS_SET.add(n)));
+
+const customGoogleFonts = new Set();
+
+function loadGoogleFont(name) {
+  if (!name) return;
+  const isInLibrary = GOOGLE_FONTS_SET.has(name);
+  const isCustom = customGoogleFonts.has(name);
+  if (!isInLibrary && !isCustom) return;
+  const id = 'gfont-' + name.replace(/[^a-z0-9]+/gi, '-');
+  if (document.getElementById(id)) return;
+  const link = document.createElement('link');
+  link.id = id;
+  link.rel = 'stylesheet';
+  link.href = 'https://fonts.googleapis.com/css2?family=' +
+    encodeURIComponent(name).replace(/%20/g, '+') + '&display=swap';
+  document.head.appendChild(link);
+}
+
+function buildFontSelects() {
+  document.querySelectorAll('.font-select').forEach(select => {
+    const key = select.dataset.fontBind;
+    const current = state[key];
+    select.innerHTML = '';
+
+    const buildOpt = (val) => {
+      const o = document.createElement('option');
+      o.value = val;
+      o.textContent = val;
+      o.style.fontFamily = `"${val}", sans-serif`;
+      return o;
+    };
+
+    Object.entries(FONT_LIBRARY).forEach(([group, fonts]) => {
+      const og = document.createElement('optgroup');
+      og.label = group;
+      fonts.forEach(f => og.appendChild(buildOpt(f)));
+      select.appendChild(og);
+    });
+
+    if (customGoogleFonts.size) {
+      const og = document.createElement('optgroup');
+      og.label = 'Custom Google Fonts';
+      [...customGoogleFonts].forEach(f => og.appendChild(buildOpt(f)));
+      select.appendChild(og);
+    }
+
+    // If current isn't in any group, append it as an "(other)" option so the select shows it
+    let exists = false;
+    select.querySelectorAll('option').forEach(o => { if (o.value === current) exists = true; });
+    if (!exists && current) {
+      const og = document.createElement('optgroup');
+      og.label = 'Other';
+      og.appendChild(buildOpt(current));
+      select.appendChild(og);
+    }
+
+    select.value = current || '';
+  });
+}
+
+// ----- ICON LIBRARY -----
+const FA_ICONS = [
+  'bolt','fire','fire-flame-curved','fire-flame-simple','explosion','bomb','hand-fist','gun','crosshairs','bullseye',
+  'biohazard','radiation','skull','skull-crossbones','shield','shield-halved','shield-heart','heart-pulse','heart','heart-crack',
+  'wand-magic-sparkles','wand-sparkles','hat-wizard','ankh','om','yin-yang','star-of-david','cross','staff-snake','eye',
+  'ghost','dragon','spaghetti-monster-flying','leaf','tree','seedling','cannabis','feather','wind','tornado',
+  'snowflake','icicles','cloud-bolt','cloud-rain','cloud-showers-heavy','sun','moon','meteor','mountain','water',
+  'droplet','fish','paw','hand','hands','hand-holding','brain','lungs','tooth','person-running',
+  'person','user-ninja','user-secret','user-tie','key','lock','lock-open','gem','crown','trophy',
+  'medal','award','ribbon','flag','flag-checkered','hammer','wrench','screwdriver','gear','gears',
+  'magnet','atom','dna','virus','flask','vial','syringe','capsules','mortar-pestle','scroll',
+  'book','book-skull','book-open','robot','microchip','rocket','satellite','satellite-dish','plug-circle-bolt','plug-circle-xmark',
+  'wifi','signal','music','guitar','drum','microphone','spider','crow','dove','cat',
+  'dog','horse','cow','hippo','otter','frog','plane','ship','truck','car',
+  'star','star-half-stroke','compass','anchor','fingerprint','qrcode','infinity','recycle','link','khanda',
+  'bullhorn','volume-high','bell','dumbbell','helmet-battle','helmet-safety','mask','headphones','mug-hot','kit-medical',
+  'briefcase-medical','heart-circle-bolt','life-ring','hat-cowboy','spray-can','toolbox','vest','wand-magic','chess-knight','chess-rook'
+];
+const FA_ICONS_UNIQUE = [...new Set(FA_ICONS)];
+
+// ----- DEFAULT CONFIG -----
+const DEFAULT_CONFIG = {
+  backgroundImage: "images/background.png",
+  silhouetteImage: "images/silhouette.png",
+  characterImage: "images/character.png",
+  filterSepia: 1,
+  filterHueRotate: 290,
+  filterBrightness: 30,
+  filterSaturate: 1000,
+  accentColor: "#D91D65",
+  headerColor: "#FDF1D5",
+  bodyTextColor: "#C9C8CC",
+  iconLabelColor: "#fcf8f0",
+  cardBgStart: "#2F2630",
+  cardBgMid: "#201A21",
+  cardBgEnd: "#2F2630",
+  cardBorderColor: "#715D7D",
+  cardHeaderBg: "#11130E",
+  backingPanelColor: "#BB85F1",
+  containerBg: "#1a1418",
+  headerFont: "Courier",
+  bodyFont: "sans-serif",
+  nameArtFont: "Arial Black",
+  name: 'First "Alias" Last',
+  personalityTraits: ["Some", "Personality", "Traits"],
+  summary: "The brief overview of your character goes here. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam ultricies nisl vitae velit fermentum venenatis.\n\nNulla finibus odio est, id eleifend metus pretium facilisis. Etiam tincidunt sollicitudin ex, at pellentesque quam.",
+  stats: [
+    { label: "Gender", value: "gender | pronouns" },
+    { label: "Height", value: "-'--\" | --- cm" },
+    { label: "Weapon", value: "name of weapon" }
+  ],
+  abilities: [
+    { icon: "bolt", name: "Ability Name", description: "Ability description goes here. **Highlight** important aspects. Lorem ipsum dolor sit amet, consectetur adipiscing elit." },
+    { icon: "bolt", name: "Ability Name", description: "Ability description goes here. **Highlight** important aspects. Lorem ipsum dolor sit amet, consectetur adipiscing elit." },
+    { icon: "bolt", name: "Ability Name", description: "Ability description goes here. **Highlight** important aspects. Lorem ipsum dolor sit amet, consectetur adipiscing elit." },
+    { icon: "bolt", name: "Ability Name", description: "Ability description goes here. **Highlight** important aspects. Lorem ipsum dolor sit amet, consectetur adipiscing elit." }
+  ],
+  nameArt: "NAME ART",
+  splashTraits: ["Role", "Playstyle", "Trait"],
+  quote: '"Character quote goes here."',
+};
+
+let state = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+
+// ----- PERSISTENCE -----
+const STORAGE_KEY = 'deadlock-splash-config-v2';
+let persistTimer = null;
+let persistWarned = false;
+
+function persistState() {
+  clearTimeout(persistTimer);
+  persistTimer = setTimeout(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (e) {
+      // Most likely QuotaExceededError from large uploaded images encoded as data: URLs.
+      if (!persistWarned) {
+        persistWarned = true;
+        console.warn('localStorage write failed:', e.message);
+        alert('Could not save current state to your browser (likely because uploaded images are too large to store). Your edits will not be remembered after a refresh. Use Save Config to keep them, or stick to image URLs.');
+      }
+    }
+  }, 200);
+}
+
+function loadPersistedState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (_) {
+    return null;
+  }
+}
+
+function clearPersistedState() {
+  try { localStorage.removeItem(STORAGE_KEY); } catch (_) {}
+}
+
+// ----- HELPERS -----
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function formatRichText(text, highlightColor) {
+  const escaped = escapeHtml(text);
+  const withBold = escaped.replace(/\*\*([^*]+?)\*\*/g, (_, m) => `<span style="color:${highlightColor}; font-weight:bolder;">${m}</span>`);
+  const paragraphs = withBold.split(/\n{2,}/).map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('');
+  return paragraphs;
+}
+
+function escapeAttr(s) {
+  return String(s == null ? '' : s).replace(/"/g, '&quot;');
+}
+
+// ----- TEMPLATE BUILDER -----
+function buildTemplate(c) {
+  const filterStr = `sepia(${c.filterSepia}) hue-rotate(${c.filterHueRotate}deg) brightness(${c.filterBrightness}%) saturate(${c.filterSaturate}%)`;
+  const cardGradient = `linear-gradient(to right, ${c.cardBgStart}, ${c.cardBgMid}, ${c.cardBgEnd})`;
+  const cardStyle = `background-image: ${cardGradient}; border: 1px solid ${c.cardBorderColor}; box-shadow: 0px 0px 5px black;`;
+  const headerStyle = `font-family: ${c.headerFont}; font-weight: bolder; font-size: 1.1rem; color: ${c.headerColor};`;
+  const cardHeaderStyle = `background-color: ${c.cardHeaderBg}; font-family: ${c.headerFont}; font-weight: bolder; font-size: 1rem; color: ${c.headerColor};`;
+
+  const traitTags = (c.personalityTraits || []).filter(t => t && t.length).map(t => `
+    <div class="col-auto mx-1 px-2 py-1" style="background-color: ${c.cardHeaderBg}; color: ${c.headerColor};">
+      ${escapeHtml(t)}
+    </div>`).join('');
+
+  const summaryHtml = formatRichText(c.summary, c.headerColor);
+
+  const statsHtml = (c.stats || []).map(s => `
+    <div class="col-4 px-1 text-center d-flex">
+      <div class="card rounded-0 flex-fill" style="${cardStyle}">
+        <h1 class="card-header py-1 px-0" style="${cardHeaderStyle}">${escapeHtml(s.label)}</h1>
+        <div class="card-body py-2">${escapeHtml(s.value)}</div>
+      </div>
+    </div>`).join('');
+
+  const abilitiesHtml = (c.abilities || []).map((a, i) => {
+    const align = (i % 2 === 0) ? 'order-last text-left' : 'order-first text-right';
+    const spacing = (i === 0) ? 'my-3' : 'mb-3';
+    return `
+      <div class="row no-gutters ${spacing}">
+        <div class="col-auto my-auto">
+          <span class="fa-stack fa-2x">
+            <i class="fas fa-circle fa-stack-2x" style="color: ${c.accentColor};"></i>
+            <i class="fas fa-${escapeAttr(a.icon || 'bolt')} fa-stack-1x" style="color: ${c.iconLabelColor};"></i>
+          </span>
+        </div>
+        <div class="col ${align}">
+          <h1 class="mb-0" style="${headerStyle}">${escapeHtml(a.name)}</h1>
+          ${formatRichText(a.description, c.headerColor)}
+        </div>
+      </div>`;
+  }).join('');
+
+  const splashTraitRotations = [
+    { outer: 5, inner: -2 },
+    { outer: -2, inner: 2 },
+    { outer: -6, inner: -1 }
+  ];
+  const splashTraitsHtml = (c.splashTraits || []).filter(t => t && t.length).map((t, i) => {
+    const r = splashTraitRotations[i] || { outer: 0, inner: 0 };
+    return `
+      <div class="col-auto p-1">
+        <div class="px-2" style="transform: rotate(${r.outer}deg); background-color: ${c.accentColor}; color: ${c.iconLabelColor};">
+          <div style="transform: rotate(${r.inner}deg);">${escapeHtml(t)}</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  return `
+    <div class="splash" style="background: ${c.containerBg};">
+      <div class="container rounded"
+           style="background-image: url('${escapeAttr(c.backgroundImage)}');
+                  background-repeat: no-repeat;
+                  background-size: cover;
+                  background-position: left center;
+                  box-shadow: 0px 0px 3px rgba(0,0,0,.5);
+                  font-weight: normal;
+                  text-shadow: 0px 0px 3px black;">
+
+        <div class="rounded"
+             style="position: absolute; bottom: 0; right: 0; height: 100%; width: 70%;
+                    background-image: url('${escapeAttr(c.silhouetteImage)}');
+                    background-repeat: no-repeat;
+                    background-size: cover;
+                    filter: ${filterStr};"></div>
+
+        <img style="position: absolute; bottom: 0; right: 0; max-height: 100%;"
+             src="${escapeAttr(c.characterImage)}" crossorigin="anonymous" referrerpolicy="no-referrer">
+
+        <div class="row">
+          <div class="col-6 mt-4 mb-3 px-4"
+               style="font-family: ${c.bodyFont};
+                      font-size: .75em;
+                      letter-spacing: 1px;
+                      line-height: .8rem;
+                      color: ${c.bodyTextColor};">
+            <div class="row mx-1 no-gutters">
+              <div class="col-12">
+                <div style="background-color: ${c.backingPanelColor};
+                            height: 90%; width: 90%;
+                            position: absolute; top: 3%; left: 5%;
+                            transform: rotate(3deg);
+                            box-shadow: 0px 0px 5px black;"></div>
+                <div class="card mx-1 my-2 p-3 rounded-0" style="${cardStyle}">
+                  <h1 style="${headerStyle}">${escapeHtml(c.name)}</h1>
+                  <div class="row ml-2 text-uppercase">
+                    ${traitTags}
+                  </div>
+                  <div class="mt-2">${summaryHtml}</div>
+                </div>
+                <div class="card-body"></div>
+              </div>
+
+              ${statsHtml}
+
+              ${abilitiesHtml}
+            </div>
+          </div>
+
+          <div class="col-6 p-4 justify-content-end align-content-end flex-wrap text-center">
+            <div class="text-center" style="color: ${c.headerColor};">
+              <h1 style="font-family: ${c.nameArtFont}; font-size: 3em; font-weight: bolder;">
+                ${escapeHtml(c.nameArt)}
+              </h1>
+              <div class="row justify-content-center text-uppercase" style="font-weight: bold;">
+                ${splashTraitsHtml}
+              </div>
+              <div class="mt-2 text-uppercase"
+                   style="font-family: ${c.headerFont}; font-weight: bolder; font-size: 1.1rem; letter-spacing: 1px;">
+                ${escapeHtml(c.quote)}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ----- RENDER + FIT -----
+function renderPreview() {
+  persistState();
+  const preview = document.getElementById('preview');
+  preview.innerHTML = buildTemplate(state);
+  document.getElementById('preview-panel').style.background = state.containerBg;
+
+  // Re-fit after images load (which may change layout height)
+  preview.querySelectorAll('img').forEach(img => {
+    if (!img.complete) {
+      img.addEventListener('load', fitPreview, { once: true });
+      img.addEventListener('error', fitPreview, { once: true });
+    }
+  });
+
+  fitPreview();
+  updateExportInfo();
+}
+
+function fitPreview() {
+  const wrap = document.getElementById('preview-wrap');
+  const preview = document.getElementById('preview');
+  const naturalWidth = 1280;
+  preview.style.transform = 'scale(1)';
+  preview.style.left = '0px';
+  preview.style.top = '0px';
+  preview.style.width = naturalWidth + 'px';
+  const naturalHeight = preview.offsetHeight;
+  const wrapW = wrap.clientWidth;
+  const wrapH = wrap.clientHeight;
+  if (naturalHeight === 0 || wrapW === 0 || wrapH === 0) return;
+  const scale = Math.min(wrapW / naturalWidth, wrapH / naturalHeight);
+  const scaledW = naturalWidth * scale;
+  const scaledH = naturalHeight * scale;
+  preview.style.transform = `scale(${scale})`;
+  preview.style.left = `${(wrapW - scaledW) / 2}px`;
+  preview.style.top = `${(wrapH - scaledH) / 2}px`;
+}
+
+function updateExportInfo() {
+  const w = parseInt(document.getElementById('export-width').value, 10) || 1280;
+  const preview = document.getElementById('preview');
+  const naturalWidth = 1280;
+  // We need natural (unscaled) height. Temporarily disable transform.
+  const oldT = preview.style.transform;
+  preview.style.transform = 'scale(1)';
+  const naturalHeight = preview.offsetHeight;
+  preview.style.transform = oldT;
+  if (!naturalHeight) {
+    document.getElementById('export-height-info').textContent = '';
+    return;
+  }
+  const exportHeight = Math.round((w / naturalWidth) * naturalHeight);
+  document.getElementById('export-height-info').textContent = `× ${exportHeight}px`;
+}
+
+// ----- CONTROL BINDING -----
+function bindControls() {
+  document.querySelectorAll('[data-bind]').forEach(el => {
+    const key = el.dataset.bind;
+    if (el.value !== state[key]) el.value = state[key] ?? '';
+    el.addEventListener('input', () => {
+      state[key] = el.value;
+      renderPreview();
+      maybeUpdateImgPreview(key);
+    });
+  });
+
+  document.querySelectorAll('[data-bind-array]').forEach(el => {
+    const key = el.dataset.bindArray;
+    const idx = parseInt(el.dataset.index, 10);
+    el.value = (state[key] && state[key][idx]) || '';
+    el.addEventListener('input', () => {
+      if (!state[key]) state[key] = [];
+      state[key][idx] = el.value;
+      renderPreview();
+    });
+  });
+
+  document.querySelectorAll('[data-bind-num]').forEach(el => {
+    const key = el.dataset.bindNum;
+    el.value = state[key] ?? 0;
+    const displayEl = document.querySelector(`[data-display="${key}"]`);
+    if (displayEl) displayEl.textContent = el.value;
+    el.addEventListener('input', () => {
+      state[key] = parseFloat(el.value);
+      if (displayEl) displayEl.textContent = el.value;
+      renderPreview();
+    });
+  });
+
+  document.querySelectorAll('[data-bind-color]').forEach(el => {
+    const key = el.dataset.bindColor;
+    el.value = state[key] || '#000000';
+    el.addEventListener('input', () => {
+      state[key] = el.value;
+      renderPreview();
+    });
+  });
+
+  document.querySelectorAll('[data-file-bind]').forEach(el => {
+    const key = el.dataset.fileBind;
+    el.addEventListener('change', () => {
+      const file = el.files && el.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        state[key] = reader.result;
+        const textInput = document.querySelector(`input[data-bind="${key}"]`);
+        if (textInput) textInput.value = reader.result;
+        renderPreview();
+        maybeUpdateImgPreview(key);
+      };
+      reader.readAsDataURL(file);
+    });
+  });
+
+  document.querySelectorAll('[data-img-preview]').forEach(el => {
+    const key = el.dataset.imgPreview;
+    el.style.backgroundImage = `url('${escapeAttr(state[key])}')`;
+  });
+
+  buildFontSelects();
+  bindFontSelects();
+
+  buildStatsControls();
+  buildAbilitiesControls();
+}
+
+function bindFontSelects() {
+  document.querySelectorAll('.font-select').forEach(select => {
+    const key = select.dataset.fontBind;
+    if (select._bound) return;
+    select._bound = true;
+    select.addEventListener('change', () => {
+      state[key] = select.value;
+      loadGoogleFont(select.value);
+      renderPreview();
+    });
+  });
+}
+
+function maybeUpdateImgPreview(key) {
+  const el = document.querySelector(`[data-img-preview="${key}"]`);
+  if (el) el.style.backgroundImage = `url('${escapeAttr(state[key])}')`;
+}
+
+function buildStatsControls() {
+  const container = document.getElementById('stats-list');
+  container.innerHTML = '';
+  state.stats.forEach((stat, i) => {
+    const row = document.createElement('div');
+    row.className = 'row no-gutters mb-2';
+    row.style.gap = '0.4rem';
+    row.innerHTML = `
+      <div class="col-md-4">
+        <label>Label ${i + 1}</label>
+        <input type="text" class="form-control form-control-sm" value="${escapeAttr(stat.label)}" data-stat-field="label" data-stat-i="${i}">
+      </div>
+      <div class="col-md">
+        <label>Value ${i + 1}</label>
+        <input type="text" class="form-control form-control-sm" value="${escapeAttr(stat.value)}" data-stat-field="value" data-stat-i="${i}">
+      </div>`;
+    container.appendChild(row);
+  });
+  container.querySelectorAll('[data-stat-field]').forEach(inp => {
+    inp.addEventListener('input', () => {
+      const i = parseInt(inp.dataset.statI, 10);
+      const f = inp.dataset.statField;
+      state.stats[i][f] = inp.value;
+      renderPreview();
+    });
+  });
+}
+
+function buildAbilitiesControls() {
+  const container = document.getElementById('abilities-list');
+  container.innerHTML = '';
+  state.abilities.forEach((ab, i) => {
+    const row = document.createElement('div');
+    row.className = 'ability-row';
+    row.innerHTML = `
+      <div class="ability-icon-btn" data-ability-icon="${i}" title="Pick icon">
+        <i class="fas fa-${escapeAttr(ab.icon || 'bolt')}"></i>
+      </div>
+      <div class="ability-fields">
+        <input type="text" class="form-control form-control-sm" placeholder="Ability name" value="${escapeAttr(ab.name)}" data-ability-field="name" data-ability-i="${i}">
+        <textarea class="form-control form-control-sm" rows="2" placeholder="Description" data-ability-field="description" data-ability-i="${i}">${escapeHtml(ab.description)}</textarea>
+      </div>`;
+    container.appendChild(row);
+  });
+  container.querySelectorAll('[data-ability-field]').forEach(inp => {
+    inp.addEventListener('input', () => {
+      const i = parseInt(inp.dataset.abilityI, 10);
+      const f = inp.dataset.abilityField;
+      state.abilities[i][f] = inp.value;
+      renderPreview();
+    });
+  });
+  container.querySelectorAll('[data-ability-icon]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const i = parseInt(btn.dataset.abilityIcon, 10);
+      openIconPicker(icon => {
+        state.abilities[i].icon = icon;
+        buildAbilitiesControls();
+        renderPreview();
+      });
+    });
+  });
+}
+
+// ----- ICON PICKER -----
+let iconPickerCallback = null;
+
+function openIconPicker(cb) {
+  iconPickerCallback = cb;
+  document.getElementById('icon-picker-modal').classList.add('open');
+  document.getElementById('icon-search').value = '';
+  document.getElementById('icon-custom').value = '';
+  renderIconGrid('');
+  setTimeout(() => document.getElementById('icon-search').focus(), 50);
+}
+
+function closeIconPicker() {
+  document.getElementById('icon-picker-modal').classList.remove('open');
+  iconPickerCallback = null;
+}
+
+function renderIconGrid(filter) {
+  const grid = document.getElementById('icon-picker-grid');
+  grid.innerHTML = '';
+  const lowered = (filter || '').toLowerCase().trim();
+  const matched = lowered ? FA_ICONS_UNIQUE.filter(n => n.toLowerCase().includes(lowered)) : FA_ICONS_UNIQUE;
+  matched.forEach(name => {
+    const el = document.createElement('div');
+    el.className = 'icon-grid-item';
+    el.title = name;
+    el.innerHTML = `<i class="fas fa-${name}"></i>`;
+    el.addEventListener('click', () => {
+      if (iconPickerCallback) iconPickerCallback(name);
+      closeIconPicker();
+    });
+    grid.appendChild(el);
+  });
+  if (matched.length === 0) {
+    grid.innerHTML = '<div style="grid-column: 1 / -1; padding: 1rem; text-align:center; color:#8d8290;">No matches — try the Custom name field for any FA name.</div>';
+  }
+}
+
+// ----- SAVE / LOAD CONFIG -----
+function saveConfig() {
+  const json = JSON.stringify(state, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const safeName = (state.name || 'deadlock-splash').replace(/[^a-z0-9-_]+/gi, '-').toLowerCase();
+  a.href = url;
+  a.download = `${safeName}-config.json`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function loadConfig(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const newConfig = JSON.parse(reader.result);
+      // Merge over defaults so partial configs still work
+      state = mergeDeep(JSON.parse(JSON.stringify(DEFAULT_CONFIG)), newConfig);
+      // Any Google Font names that weren't in our built-in list become "custom"
+      // so the dropdowns surface them.
+      ['headerFont', 'bodyFont', 'nameArtFont'].forEach(k => {
+        const f = state[k];
+        if (!f) return;
+        const inLibrary = Object.values(FONT_LIBRARY).some(arr => arr.includes(f));
+        if (!inLibrary) customGoogleFonts.add(f);
+        loadGoogleFont(f);
+      });
+      refreshAllControls();
+      renderPreview();
+    } catch (err) {
+      alert('Failed to load config: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+function mergeDeep(target, source) {
+  if (Array.isArray(source)) return source.slice();
+  if (source && typeof source === 'object') {
+    const out = (typeof target === 'object' && target !== null && !Array.isArray(target)) ? { ...target } : {};
+    for (const k of Object.keys(source)) {
+      out[k] = mergeDeep(target ? target[k] : undefined, source[k]);
+    }
+    return out;
+  }
+  return source;
+}
+
+function refreshAllControls() {
+  document.querySelectorAll('[data-bind]').forEach(el => {
+    const key = el.dataset.bind;
+    el.value = state[key] ?? '';
+  });
+  document.querySelectorAll('[data-bind-array]').forEach(el => {
+    const key = el.dataset.bindArray;
+    const idx = parseInt(el.dataset.index, 10);
+    el.value = (state[key] && state[key][idx]) || '';
+  });
+  document.querySelectorAll('[data-bind-num]').forEach(el => {
+    const key = el.dataset.bindNum;
+    el.value = state[key] ?? 0;
+    const displayEl = document.querySelector(`[data-display="${key}"]`);
+    if (displayEl) displayEl.textContent = el.value;
+  });
+  document.querySelectorAll('[data-bind-color]').forEach(el => {
+    const key = el.dataset.bindColor;
+    el.value = state[key] || '#000000';
+  });
+  document.querySelectorAll('[data-img-preview]').forEach(el => {
+    const key = el.dataset.imgPreview;
+    el.style.backgroundImage = `url('${escapeAttr(state[key])}')`;
+  });
+  buildFontSelects();
+  bindFontSelects();
+  buildStatsControls();
+  buildAbilitiesControls();
+}
+
+// ----- IMAGE EXPORT -----
+//
+// Problem: html2canvas can't read pixels from cross-origin images served without
+// CORS headers (most image hosts including toyhou.se). useCORS:true makes them
+// fail to load; allowTaint:true taints the canvas and toBlob returns null.
+//
+// Fix: pre-fetch every image as a data: URL *before* html2canvas runs. Try the
+// direct fetch first (works for CORS-enabled hosts), then fall back to public
+// CORS proxies. Render into a hidden 1280px-wide container with the data URLs
+// substituted in, then capture.
+
+function blobToDataURL(blob) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = () => reject(new Error('FileReader failed'));
+    r.readAsDataURL(blob);
+  });
+}
+
+const CORS_PROXIES = [
+  url => 'https://corsproxy.io/?url=' + encodeURIComponent(url),
+  url => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url),
+];
+
+async function fetchAsDataURL(url) {
+  if (!url) return '';
+  if (url.startsWith('data:')) return url;
+
+  // 1) direct CORS fetch
+  try {
+    const res = await fetch(url, { mode: 'cors', credentials: 'omit' });
+    if (res.ok) {
+      const blob = await res.blob();
+      if (blob.size > 0) return await blobToDataURL(blob);
+    }
+  } catch (_) { /* fall through */ }
+
+  // 2) proxy fallbacks
+  for (const buildProxy of CORS_PROXIES) {
+    try {
+      const res = await fetch(buildProxy(url));
+      if (res.ok) {
+        const blob = await res.blob();
+        if (blob.size > 0 && blob.type.startsWith('image/')) {
+          return await blobToDataURL(blob);
+        }
+      }
+    } catch (_) { /* try next */ }
+  }
+
+  throw new Error(`Could not load image (CORS-blocked and all proxies failed): ${url}`);
+}
+
+function waitForImages(root) {
+  const imgs = root.querySelectorAll('img');
+  return Promise.all(Array.from(imgs).map(img => {
+    if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+    return new Promise(resolve => {
+      img.addEventListener('load', resolve, { once: true });
+      img.addEventListener('error', resolve, { once: true });
+    });
+  }));
+}
+
+async function saveImage() {
+  const targetWidth = parseInt(document.getElementById('export-width').value, 10) || 1280;
+  if (targetWidth < 100 || targetWidth > 10000) {
+    alert('Width must be between 100 and 10000');
+    return;
+  }
+
+  const naturalWidth = 1280;
+  const btn = document.getElementById('btn-image');
+  const oldText = btn.innerHTML;
+  const setStatus = (msg) => { btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${msg}`; };
+
+  btn.disabled = true;
+  let renderContainer = null;
+  const failures = [];
+
+  try {
+    setStatus('Loading images…');
+
+    const imageKeys = ['backgroundImage', 'silhouetteImage', 'characterImage'];
+    const exportState = JSON.parse(JSON.stringify(state));
+    await Promise.all(imageKeys.map(async (k) => {
+      try {
+        exportState[k] = await fetchAsDataURL(state[k]);
+      } catch (e) {
+        failures.push(k + ': ' + e.message);
+        exportState[k] = ''; // strip so it doesn't break layout
+      }
+    }));
+
+    if (failures.length === imageKeys.length) {
+      throw new Error('All image fetches failed:\n' + failures.join('\n'));
+    }
+
+    setStatus('Rendering…');
+
+    // Hidden render at full natural width so layout matches the live preview
+    renderContainer = document.createElement('div');
+    renderContainer.id = 'export-render';
+    renderContainer.style.position = 'fixed';
+    renderContainer.style.left = '-20000px';
+    renderContainer.style.top = '0';
+    renderContainer.style.width = naturalWidth + 'px';
+    renderContainer.style.background = state.containerBg;
+    renderContainer.innerHTML = buildTemplate(exportState);
+    document.body.appendChild(renderContainer);
+
+    // Wait for fonts + images + a layout settle
+    if (document.fonts && document.fonts.ready) await document.fonts.ready;
+    await waitForImages(renderContainer);
+    await new Promise(r => setTimeout(r, 80));
+
+    const naturalHeight = renderContainer.offsetHeight;
+    const scale = targetWidth / naturalWidth;
+
+    const canvas = await html2canvas(renderContainer, {
+      scale: scale,
+      useCORS: false,
+      allowTaint: false,
+      backgroundColor: state.containerBg,
+      logging: false,
+      width: naturalWidth,
+      height: naturalHeight,
+      windowWidth: naturalWidth,
+      windowHeight: naturalHeight,
+      // Render container is offscreen-left, so html2canvas needs an explicit
+      // origin to capture from. x/y are within the cloned doc, which always
+      // starts at 0,0 — no offset adjustment needed.
+    });
+
+    await new Promise((resolve, reject) => {
+      canvas.toBlob(blob => {
+        if (!blob) {
+          reject(new Error('toBlob returned null — the canvas is tainted. This means at least one image still slipped through as cross-origin. Please report the URL.'));
+          return;
+        }
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const safeName = (state.name || 'deadlock-splash').replace(/[^a-z0-9-_]+/gi, '-').toLowerCase();
+        a.href = url;
+        a.download = `${safeName}-${targetWidth}px.png`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        resolve();
+      }, 'image/png');
+    });
+
+    if (failures.length) {
+      alert('Image saved, but some images could not be loaded and were omitted:\n\n' + failures.join('\n') + '\n\nTry uploading these directly via the Upload buttons.');
+    }
+  } catch (err) {
+    console.error(err);
+    const fileProtoHint = location.protocol === 'file:'
+      ? '\n\nYou\'re running via file:// — browsers block fetch() of local files. Run `python3 -m http.server` in this folder and open http://localhost:8000 instead. Uploaded (data:) images work either way.'
+      : '';
+    alert('Failed to export image:\n\n' + err.message + fileProtoHint + '\n\nFallback: upload the background / silhouette / character images directly using the Upload buttons — that always works because they become data URLs in-browser.');
+  } finally {
+    if (renderContainer && renderContainer.parentNode) {
+      renderContainer.parentNode.removeChild(renderContainer);
+    }
+    btn.innerHTML = oldText;
+    btn.disabled = false;
+  }
+}
+
+// ----- RESIZER -----
+function setupResizer() {
+  const resizer = document.getElementById('resizer');
+  const previewPanel = document.getElementById('preview-panel');
+  let dragging = false;
+  let startY = 0;
+  let startHeight = 0;
+
+  resizer.addEventListener('mousedown', e => {
+    dragging = true;
+    startY = e.clientY;
+    startHeight = previewPanel.getBoundingClientRect().height;
+    document.body.style.cursor = 'ns-resize';
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const dy = e.clientY - startY;
+    const newH = Math.max(120, Math.min(window.innerHeight - 200, startHeight - dy));
+    previewPanel.style.flex = `0 0 ${newH}px`;
+    fitPreview();
+  });
+  document.addEventListener('mouseup', () => {
+    if (!dragging) return;
+    dragging = false;
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  });
+}
+
+// ----- INIT -----
+function init() {
+  // Restore previous session from localStorage if present
+  const persisted = loadPersistedState();
+  if (persisted) {
+    state = mergeDeep(JSON.parse(JSON.stringify(DEFAULT_CONFIG)), persisted);
+    // Surface any non-built-in font names as "custom" so the dropdowns include them
+    ['headerFont', 'bodyFont', 'nameArtFont'].forEach(k => {
+      const f = state[k];
+      if (!f) return;
+      const inLibrary = Object.values(FONT_LIBRARY).some(arr => arr.includes(f));
+      if (!inLibrary) customGoogleFonts.add(f);
+    });
+  }
+
+  bindControls();
+  renderPreview();
+
+  document.getElementById('btn-save').addEventListener('click', saveConfig);
+  document.getElementById('btn-load').addEventListener('click', () => document.getElementById('file-load').click());
+  document.getElementById('file-load').addEventListener('change', e => {
+    const f = e.target.files && e.target.files[0];
+    if (f) loadConfig(f);
+    e.target.value = '';
+  });
+  document.getElementById('btn-reset').addEventListener('click', () => {
+    if (confirm('Reset to default config? Current changes (including saved browser state) will be lost.')) {
+      clearPersistedState();
+      state = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+      refreshAllControls();
+      renderPreview();
+    }
+  });
+  document.getElementById('btn-image').addEventListener('click', saveImage);
+  document.getElementById('export-width').addEventListener('input', updateExportInfo);
+
+  document.getElementById('icon-picker-close').addEventListener('click', closeIconPicker);
+  document.getElementById('icon-search').addEventListener('input', e => renderIconGrid(e.target.value));
+  document.getElementById('icon-custom-use').addEventListener('click', () => {
+    const val = document.getElementById('icon-custom').value.trim().replace(/^fa[-\s]*/i, '');
+    if (val && iconPickerCallback) {
+      iconPickerCallback(val);
+      closeIconPicker();
+    }
+  });
+  document.getElementById('icon-custom').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('icon-custom-use').click();
+  });
+  document.getElementById('icon-picker-modal').addEventListener('click', e => {
+    if (e.target.id === 'icon-picker-modal') closeIconPicker();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && document.getElementById('icon-picker-modal').classList.contains('open')) {
+      closeIconPicker();
+    }
+  });
+
+  document.getElementById('btn-add-font').addEventListener('click', () => {
+    const name = prompt('Google Font family name (exactly as on fonts.google.com, e.g. "Press Start 2P"):');
+    if (!name) return;
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    customGoogleFonts.add(trimmed);
+    loadGoogleFont(trimmed);
+    buildFontSelects();
+  });
+
+  // Preload any Google Fonts referenced by the current state so the live preview
+  // uses them immediately on first paint.
+  ['headerFont', 'bodyFont', 'nameArtFont'].forEach(k => loadGoogleFont(state[k]));
+
+  setupResizer();
+  window.addEventListener('resize', fitPreview);
+
+  // Re-fit once fonts have loaded — font size / metrics often shift initial layout
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(() => { fitPreview(); updateExportInfo(); });
+  }
+}
+
+window.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
